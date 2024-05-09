@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Extrator de Transcrição da Udemy",
   "version": "1.0",
-  "permissions": ["activeTab", "scripting"],
+  "permissions": ["activeTab", "scripting", "<all_urls>"],
   "host_permissions": [
     "*://*.udemy.com/*",
     "http://localhost:8080/*"
