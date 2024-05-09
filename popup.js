@@ -4,11 +4,9 @@ window.onload = function() {
         fetchTranscription(tabs[0].id);
         observeActiveCue(tabs[0].id);
         clickButtonOnLoad(tabs[0].id);
-
     });
 };
 
-let translatedSubtitles = [];
 
 function observeActiveCue(tabId) {
     console.log("Tab ID:", tabId);
@@ -26,7 +24,12 @@ function observeActiveCue(tabId) {
 }
 
 function observeMutations (tabId) {
-
+    let translatedSubtitles = [];
+    chrome.runtime.onMessage.addListener(function(message, sender, sendResponse) {
+        if (message.action === "update_subtitles") {
+            translatedSubtitles = message.subtitles;
+        }
+    });
     function removeAllSubtitles(callback) {
         const subtitles = document.querySelectorAll('[id^="custom-subtitle-"]');
         subtitles.forEach(sub => sub.remove());
@@ -64,6 +67,7 @@ function observeMutations (tabId) {
                     const index = Array.from(transcriptContainer.querySelectorAll('.transcript--cue-container--Vuwj6')).indexOf(element.parentNode);
                     console.log("Active cue index:", index);
                     if (index !== -1) {
+                        console.log(translatedSubtitles)
                         removeAllSubtitles(()=>displaySubtitle(translatedSubtitles[index]));
                     }
                 }
@@ -83,7 +87,7 @@ function fetchTranscription(tabId) {
         function: fetchTranscriptionItems,
     }, (injectionResults) => {
         const transcriptionItems = injectionResults[0].result;
-        sendTranscriptionItemsOneByOne(transcriptionItems)
+        sendTranscriptionItemsOneByOne(transcriptionItems, tabId)
     });
 }
 
@@ -93,8 +97,9 @@ function fetchTranscriptionItems() {
     return Array.from(transcriptElements).map(element => element.innerText.trim());
 }
 
-function sendTranscriptionItemsOneByOne(items) {
+function sendTranscriptionItemsOneByOne(items, tabId) {
     let index = 0;
+    let translatedSubtitles = [];
 
     function sendNextItem() {
         if (index < items.length) {
@@ -111,6 +116,10 @@ function sendTranscriptionItemsOneByOne(items) {
                     translatedSubtitles[index] = data.subtitle;
                     console.log("Translation completed:", data.subtitle);
                     index++;
+                    chrome.tabs.sendMessage(tabId, {
+                        action: "update_subtitles",
+                        subtitles: translatedSubtitles
+                    });
                     setTimeout(sendNextItem, 1000);
                 })
                 .catch(error => {
@@ -122,37 +131,18 @@ function sendTranscriptionItemsOneByOne(items) {
     sendNextItem();
 }
 
-
-// function clearSubtitles(tabId, callback) {
-//     chrome.scripting.executeScript({
-//         target: {tabId: tabId},
-//         function: removeAllSubtitles
-//     }, callback);
-// }
-
-
-// function injectSubtitle(subtitle, tabId) {
-//     chrome.scripting.executeScript({
-//         target: {tabId: tabId},
-//         function: displaySubtitle,
-//         args: [subtitle]
-//     });
-// }
-
-
-
 function clickButtonOnLoad(tabId) {
     chrome.scripting.executeScript({
         target: {tabId: tabId},
-        function: clickPlayButton,
+        function: clickPlayOnVideoArea,
     });
 }
 
-function clickPlayButton() {
-    const button = document.getElementById('popper-trigger--59');
-    if (button) {
-        button.click();
+function clickPlayOnVideoArea() {
+    const videoArea = document.getElementById('playerId__22666194--21shaka-mock-vjs-control-bar-popover-area');
+    if (videoArea) {
+        videoArea.click();
     } else {
-        console.error('Botão não encontrado!');
+        console.error('Área do player não encontrada!');
     }
 }
